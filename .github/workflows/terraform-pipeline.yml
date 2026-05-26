@@ -1,0 +1,97 @@
+name: Terraform CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-pipeline.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-pipeline.yml'
+
+jobs:
+  fmt:
+    name: Terraform — fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive terraform/
+
+  validate:
+    name: Terraform — validate
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7"
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform validate
+        run: terraform -chdir=terraform validate
+
+  tflint:
+    name: Terraform — tflint (best practices)
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v3
+        with:
+          tflint_version: v0.50
+
+      - name: Run tflint
+        run: tflint --chdir=terraform --recursive --init
+
+  plan:
+    name: Terraform — plan
+    runs-on: ubuntu-latest
+    needs: [tflint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7"
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform plan
+        run: terraform -chdir=terraform plan -out=tfplan
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+  apply:
+    name: Terraform — apply
+    runs-on: ubuntu-latest
+    needs: [plan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7"
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform apply
+        run: terraform -chdir=terraform apply -auto-approve -input=false
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock

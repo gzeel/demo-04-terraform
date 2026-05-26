@@ -1,0 +1,35 @@
+name: Terraform — Destroy (Handmatig)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "DESTROY" om te bevestigen'
+        required: true
+        type: string
+
+jobs:
+  destroy:
+    name: Terraform — destroy
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'DESTROY'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7"
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform plan — destroy
+        run: terraform -chdir=terraform plan -destroy -out=tfdestroyplan
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+      - name: Terraform destroy
+        run: terraform -chdir=terraform destroy -auto-approve -input=false
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
