@@ -50,12 +50,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: terraform-linters/setup-tflint@v3
-        with:
-          tflint_version: v0.50
+      - name: Install tflint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
 
       - name: Run tflint
-        run: tflint --chdir=terraform --recursive --init
+        run: |
+          tflint --chdir=terraform --init
+          tflint --chdir=terraform
 
   plan:
     name: Terraform — plan
