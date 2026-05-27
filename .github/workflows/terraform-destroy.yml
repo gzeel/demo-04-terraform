@@ -30,6 +30,6 @@ jobs:
           DOCKER_HOST: unix:///var/run/docker.sock
 
       - name: Terraform destroy
-        run: terraform -chdir=terraform destroy -auto-approve -input=false
+        run: terraform -chdir=terraform apply tfdestroyplan
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
